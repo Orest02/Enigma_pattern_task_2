@@ -95,6 +95,15 @@ def retrieve_from_db(query):
             print("The SQLite connection is closed")
         return new_df
 
+def find_reds(im): #souce: https://stackoverflow.com/questions/51229126/how-to-find-the-red-color-regions-using-opencv?fbclid=IwAR23jM9Lij1k0C1NCxEkyQGY0oM-w0qNDyDr0jnJDkD2L5FAbNNktuiQr9I
+    im_hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
+
+    ## Gen lower mask (0-5) and upper mask (175-180) of RED
+    mask1 = cv2.inRange(im_hsv, (0,50,20), (5,255,255))
+    mask2 = cv2.inRange(im_hsv, (175,50,20), (180,255,255))
+    ## Merge the mask and crop the red regions
+    mask = cv2.bitwise_or(mask1, mask2)
+    return np.sum(mask.flatten())
 
 if __name__ == '__main__':
     arg_list = sys.argv
@@ -121,7 +130,14 @@ if __name__ == '__main__':
     # put data in sqlite. For this purpose I will make use of pandas built-in functions
 
     df = pd.DataFrame(im_list, columns=['Images'])
+    df['Shapes'] = df.apply(lambda x: x.shape)
 
     save_to_sql(df, 'Flickr')
+
+    df['reds'] = df['Images'].apply(find_reds)
+
+    im = df.loc[df['reds'].idxmax()]['Images']
+
+    show_img(im) #This is the reddest picture (has the most red in it)
 
     print('Took {} seconds'.format(round(time.time() - start_time, 2)))
